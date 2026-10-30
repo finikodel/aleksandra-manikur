@@ -1,1 +1,54 @@
 
+name: Deploy Aleksandra Manicure to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Unpack application
+        run: unzip -oq manikur_archive.zip -d .
+
+      - name: Build website
+        working-directory: app
+        env:
+          NITRO_PRESET: node-server
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+          test -s .output/public/_shell.html
+          cp .output/public/_shell.html .output/public/index.html
+          cp .output/public/_shell.html .output/public/404.html
+          touch .output/public/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/.output/public
+
+      - name: Deploy website
+        uses: actions/deploy-pages@v4
